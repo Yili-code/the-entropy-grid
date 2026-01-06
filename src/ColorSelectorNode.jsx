@@ -2,26 +2,27 @@ import React from 'react';
 import { Handle, Position } from 'reactflow';
 
 // 這就是你的自定義節點組件
-const ColorSelectorNode = ({ data }) => {
-  console.log('節點收到的資料: ', data);
+const ColorSelectorNode = ({ id, data }) => {
   return (
     <div style={{ 
-      background: '#fff', 
+      background: data.color || '#fff', 
       padding: '10px', 
       borderRadius: '8px', 
       border: '2px solid #777',
       minWidth: '100px' 
     }}>
-      {/* Target 代表別人的線連進來 */}
       <Handle type="target" position={Position.Top} />
       
       <div>
-        <p style={{ fontSize: '12px', margin: 0 }}>自定義標題</p>
         <strong>{data.label}</strong>
-        <input type="color" defaultValue={data.color} style={{ display: 'block' }} />
+        <input 
+          type="color" 
+          defaultValue={data.color}
+          onChange={(evt) => data.onChange(id, evt.target.value)}
+          className="nodrag" 
+        />
       </div>
 
-      {/* Source 代表從這個點連出去 */}
       <Handle type="source" position={Position.Bottom} />
     </div>
   );
