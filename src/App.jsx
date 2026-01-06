@@ -9,26 +9,31 @@ import ReactFlow, {
   addEdge 
 } from 'reactflow';
 
-
-import 'reactflow/dist/style.css';
-
 const nodeTypes = {
   colorPicker: ColorSelectorNode,
 };
 
+import 'reactflow/dist/style.css';
+
 // 定義初始節點
 const initialNodes = [
   { 
-    id: 'node-1',
+    id: '1',
     type: 'colorPicker',
     data: { label: '選個顏色吧', color: '#ff0000' } , 
     position: { x: 100, y: 100 } 
   },   
   { 
-    id: 'node-2',
+    id: '2',
     type: 'default',
     data: { label: '普通節點' },
-    position: { x: 100, y: 300 } 
+    position: { x: 100, y: 600 } 
+  },
+  {
+    id: '3',
+    type: 'colorPicker',
+    data: { label: '這裡才是自定義標題', color: '#000000' },
+    position: { x: 600, y: 100 }
   },
 ];
 

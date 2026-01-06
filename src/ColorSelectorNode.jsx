@@ -3,6 +3,7 @@ import { Handle, Position } from 'reactflow';
 
 // 這就是你的自定義節點組件
 const ColorSelectorNode = ({ data }) => {
+  console.log('節點收到的資料: ', data);
   return (
     <div style={{ 
       background: '#fff', 
