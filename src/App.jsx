@@ -1,4 +1,5 @@
 import React, { useCallback } from 'react';
+import ColorSelectorNode from './ColorSelectorNode';
 import ReactFlow, { 
   MiniMap, 
   Controls, 
@@ -8,13 +9,27 @@ import ReactFlow, {
   addEdge 
 } from 'reactflow';
 
-// 必須引入 React Flow 的樣式
+
 import 'reactflow/dist/style.css';
+
+const nodeTypes = {
+  colorPicker: ColorSelectorNode,
+};
 
 // 定義初始節點
 const initialNodes = [
-  { id: '1', position: { x: 100, y: 100 }, data: { label: '開始 (節點 1)' } },
-  { id: '2', position: { x: 100, y: 300 }, data: { label: '結束 (節點 2)' } },
+  { 
+    id: 'node-1',
+    type: 'colorPicker',
+    data: { label: '選個顏色吧', color: '#ff0000' } , 
+    position: { x: 100, y: 100 } 
+  },   
+  { 
+    id: 'node-2',
+    type: 'default',
+    data: { label: '普通節點' },
+    position: { x: 100, y: 300 } 
+  },
 ];
 
 // 定義初始連線
@@ -35,6 +50,7 @@ export default function App() {
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
@@ -42,7 +58,7 @@ export default function App() {
       >
         <Controls />
         <MiniMap />
-        <Background variant="dots" gap={12} size={1} />
+        <Background variant="lines" gap={12} size={1} />
       </ReactFlow>
     </div>
   );
