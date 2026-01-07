@@ -75,7 +75,7 @@ const ColorSelectorNode = ({ id, data }) => {
         padding: '16px', 
         borderRadius: '0', 
         border: `2px solid ${glowColor}`,
-        minWidth: '140px',
+        minWidth: '200px',
         position: 'relative',
         boxShadow: `
           0 0 ${10 * glowIntensity}px ${glowColor},
@@ -169,52 +169,116 @@ const ColorSelectorNode = ({ id, data }) => {
       <div style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '12px',
-        alignItems: 'center',
+        gap: '16px',
         position: 'relative',
         zIndex: 1,
+        width: '100%',
+        alignItems: 'center',
       }}>
+        {/* 頂部：習慣名稱 */}
         <strong style={{
           color: glowColor,
-          fontSize: '12px',
+          fontSize: '14px',
           fontWeight: '600',
-          letterSpacing: '2px',
+          letterSpacing: '1px',
           textShadow: `0 0 10px ${glowColor}`,
           textTransform: 'uppercase',
+          textAlign: 'center',
+          width: '100%',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
         }}>
-          {data.label}
+          {data.habitName || data.label || 'UNNAMED'}
         </strong>
-        <div style={{
-          position: 'relative',
-          display: 'inline-block',
-        }}>
-          <input 
-            type="color" 
-            defaultValue={data.color}
-            onChange={(evt) => data.onChange(id, evt.target.value)}
-            className="nodrag"
-            style={{
-              width: '60px',
-              height: '60px',
-              borderRadius: '0',
-              border: `2px solid ${glowColor}`,
-              cursor: 'pointer',
-              boxShadow: `0 0 15px ${glowColor}80`,
+        
+        {/* 中間：Checkbox */}
+        <input 
+          type="checkbox" 
+          checked={data.isDone || false}
+          onChange={(evt) => {
+            if (data.onToggleDone) {
+              data.onToggleDone(id, evt.target.checked);
+            }
+          }}
+          className="nodrag"
+          style={{
+            width: '24px',
+            height: '24px',
+            cursor: 'pointer',
+            accentColor: glowColor,
+            filter: `drop-shadow(0 0 8px ${glowColor})`,
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'scale(1.3)';
+            e.target.style.filter = `drop-shadow(0 0 15px ${glowColor})`;
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'scale(1)';
+            e.target.style.filter = `drop-shadow(0 0 8px ${glowColor})`;
+          }}
+        />
+        
+        {/* 底部：三條橫線（可點擊查看/編輯） */}
+        <button
+          onClick={() => {
+            if (data.onDetail) {
+              data.onDetail(id);
+            }
+          }}
+          className="nodrag"
+          style={{
+            padding: '8px',
+            borderRadius: '0',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '4px',
+            alignItems: 'center',
+            justifyContent: 'center',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            width: '100%',
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.opacity = '0.8';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.opacity = '1';
+          }}
+        >
+          {/* 三條橫線 */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '3px',
+            alignItems: 'center',
+          }}>
+            <div style={{
+              width: '20px',
+              height: '2px',
+              background: glowColor,
+              boxShadow: `0 0 5px ${glowColor}`,
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              WebkitAppearance: 'none',
-              appearance: 'none',
-              background: 'rgba(10, 10, 10, 0.8)',
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.transform = 'scale(1.1)';
-              e.target.style.boxShadow = `0 0 25px ${glowColor}`;
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.transform = 'scale(1)';
-              e.target.style.boxShadow = `0 0 15px ${glowColor}80`;
-            }}
-          />
-        </div>
+            }} />
+            <div style={{
+              width: '20px',
+              height: '2px',
+              background: glowColor,
+              boxShadow: `0 0 5px ${glowColor}`,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            }} />
+            <div style={{
+              width: '20px',
+              height: '2px',
+              background: glowColor,
+              boxShadow: `0 0 5px ${glowColor}`,
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+            }} />
+          </div>
+        </button>
       </div>
     </div>
   );

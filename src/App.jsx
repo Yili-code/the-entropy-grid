@@ -1,5 +1,5 @@
 import 'reactflow/dist/style.css';
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import ColorSelectorNode from './ColorSelectorNode';
 import ReactFlow, { 
   MiniMap, 
@@ -29,7 +29,9 @@ const defaultInitialNodes = [
     id: '1',
     type: 'colorPicker',
     data: { 
-      label: 'NODE_01', 
+      label: 'NODE_01',
+      habitName: '範例習慣',
+      isDone: false,
       color: '#ff007f'
     }, 
     position: { x: 0, y: 200 } 
@@ -69,8 +71,42 @@ export default function App() {
     [setNodes, setEdges]
   );
 
-  // 從 LocalStorage 嘗試讀取並初始化
-  React.useEffect(() => {
+  // 切換完成狀態
+  const onToggleDone = useCallback(
+    (id, isDone) => {
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === id) {
+            return {
+              ...node,
+              data: { ...node.data, isDone },
+            };
+          }
+          return node;
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  // 詳細按鈕點擊處理
+  const onDetail = useCallback(
+    (id) => {
+      setNodes((nds) => {
+        const node = nds.find((n) => n.id === id);
+        if (node) {
+          console.log('詳細信息:', node);
+          // 這裡可以打開詳細信息彈窗或執行其他操作
+          alert(`節點詳細信息:\n名稱: ${node.data.habitName || node.data.label}\n完成狀態: ${node.data.isDone ? '已完成' : '未完成'}`);
+        }
+        return nds; // 不改變節點狀態，只是讀取
+      });
+    },
+    [setNodes]
+  );
+
+  // 從 LocalStorage 嘗試讀取並初始化（只在組件掛載時運行一次）
+  useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     let initialNodes = defaultInitialNodes;
     let initialEdges = defaultInitialEdges;
@@ -79,19 +115,7 @@ export default function App() {
       try {
         const { nodes: savedNodes, edges: savedEdges } = JSON.parse(saved);
         if (savedNodes && savedNodes.length > 0) {
-          initialNodes = savedNodes.map((node) => {
-            if (node.type === 'colorPicker') {
-              return {
-                ...node,
-                data: {
-                  ...node.data,
-                  onChange: onColorChange,
-                  onDelete: onDeleteNode,
-                },
-              };
-            }
-            return node;
-          });
+          initialNodes = savedNodes;
         }
         if (savedEdges && savedEdges.length > 0) {
           initialEdges = savedEdges;
@@ -110,6 +134,8 @@ export default function App() {
             ...node.data,
             onChange: onColorChange,
             onDelete: onDeleteNode,
+            onToggleDone: onToggleDone,
+            onDetail: onDetail,
           },
         };
       }
@@ -118,10 +144,32 @@ export default function App() {
 
     setNodes(initialNodes);
     setEdges(initialEdges);
-  }, [onColorChange, onDeleteNode, setNodes, setEdges]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 只在組件掛載時運行一次
+
+  // 當回調函數改變時，更新所有節點的回調函數
+  useEffect(() => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.type === 'colorPicker') {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              onChange: onColorChange,
+              onDelete: onDeleteNode,
+              onToggleDone: onToggleDone,
+              onDetail: onDetail,
+            },
+          };
+        }
+        return node;
+      })
+    );
+  }, [onColorChange, onDeleteNode, onToggleDone, onDetail, setNodes]);
 
   // 自動保存節點和邊到本地儲存（清理函數引用）
-  React.useEffect(() => {
+  useEffect(() => {
     // 只在有節點或邊時才保存，避免初始化時覆蓋
     if (nodes.length === 0 && edges.length === 0) {
       return;
@@ -130,7 +178,13 @@ export default function App() {
     try {
       // 清理節點數據，移除函數引用以便序列化
       const cleanNodes = nodes.map((node) => {
-        const { onChange: _onChange, onDelete: _onDelete, ...cleanData } = node.data || {};
+        const { 
+          onChange: _onChange, 
+          onDelete: _onDelete, 
+          onToggleDone: _onToggleDone,
+          onDetail: _onDetail,
+          ...cleanData 
+        } = node.data || {};
         return {
           ...node,
           data: cleanData,
@@ -169,9 +223,13 @@ export default function App() {
         type: 'colorPicker',
         data: {
           label: `NODE_${nds.length + 1}`,
+          habitName: `習慣 ${nds.length + 1}`,
+          isDone: false,
           color: randomColor,
           onChange: onColorChange,
-          onDelete: onDeleteNode
+          onDelete: onDeleteNode,
+          onToggleDone: onToggleDone,
+          onDetail: onDetail
         },
         position: {
           x: newX,
@@ -181,18 +239,24 @@ export default function App() {
 
       return nds.concat(newNode);
     });
-  }, [onColorChange, onDeleteNode, setNodes]);
+  }, [onColorChange, onDeleteNode, onToggleDone, onDetail, setNodes]);
 
   // 手動存檔函數
   const handleManualSave = useCallback(() => {
-    // 清理節點數據，移除函數引用以便序列化
-    const cleanNodes = nodes.map((node) => {
-      const { onChange: _onChange, onDelete: _onDelete, ...cleanData } = node.data || {};
-      return {
-        ...node,
-        data: cleanData,
-      };
-    });
+      // 清理節點數據，移除函數引用以便序列化
+      const cleanNodes = nodes.map((node) => {
+        const { 
+          onChange: _onChange, 
+          onDelete: _onDelete, 
+          onToggleDone: _onToggleDone,
+          onDetail: _onDetail,
+          ...cleanData 
+        } = node.data || {};
+        return {
+          ...node,
+          data: cleanData,
+        };
+      });
 
     const dataToSave = { 
       nodes: cleanNodes, 
