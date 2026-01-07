@@ -17,6 +17,7 @@ const nodeTypes = {
 };
 
 const STORAGE_KEY = 'react-flow-data';
+const LAST_OPEN_DATE_KEY = 'last-open-date';
 
 // 定義默認初始節點和邊
 const defaultInitialNodes = [
@@ -49,6 +50,41 @@ export default function App() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNodeForEdit, setSelectedNodeForEdit] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // 獲取今天的日期字符串 (YYYY-MM-DD)
+  const getTodayDateString = useCallback(() => {
+    return new Date().toISOString().split('T')[0];
+  }, []);
+
+  // 檢查是否跨過午夜並重置所有節點的 isDone
+  const resetDailyCheckboxes = useCallback(() => {
+    setNodes((nds) =>
+      nds.map((node) => {
+        if (node.type === 'colorPicker') {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              isDone: false,
+            },
+          };
+        }
+        return node;
+      })
+    );
+  }, [setNodes]);
+
+  // 檢查日期差異並重置 checkbox
+  const checkAndResetIfNewDay = useCallback(() => {
+    const today = getTodayDateString();
+    const lastOpenDate = localStorage.getItem(LAST_OPEN_DATE_KEY);
+
+    // 如果沒有記錄或日期不同，重置所有 checkbox
+    if (!lastOpenDate || lastOpenDate !== today) {
+      resetDailyCheckboxes();
+      localStorage.setItem(LAST_OPEN_DATE_KEY, today);
+    }
+  }, [getTodayDateString, resetDailyCheckboxes]);
 
   // 更新節點顏色
   const onColorChange = useCallback(
@@ -185,6 +221,26 @@ export default function App() {
       }
     }
 
+    // 檢查日期並重置 checkbox（如果需要）
+    const today = getTodayDateString();
+    const lastOpenDate = localStorage.getItem(LAST_OPEN_DATE_KEY);
+    if (!lastOpenDate || lastOpenDate !== today) {
+      // 重置所有節點的 isDone
+      initialNodes = initialNodes.map((node) => {
+        if (node.type === 'colorPicker') {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              isDone: false,
+            },
+          };
+        }
+        return node;
+      });
+      localStorage.setItem(LAST_OPEN_DATE_KEY, today);
+    }
+
     // 為初始節點添加回調函數
     initialNodes = initialNodes.map((node) => {
       if (node.type === 'colorPicker') {
@@ -207,6 +263,22 @@ export default function App() {
     isInitializedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 只在組件掛載時運行一次
+
+  // 每分鐘檢查一次是否跨過午夜
+  useEffect(() => {
+    // 立即檢查一次
+    checkAndResetIfNewDay();
+
+    // 設置每分鐘檢查一次的定時器
+    const intervalId = setInterval(() => {
+      checkAndResetIfNewDay();
+    }, 60000); // 60000 毫秒 = 1 分鐘
+
+    // 清理定時器
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [checkAndResetIfNewDay]);
 
   // 當回調函數改變時，更新所有節點的回調函數
   // 使用 useRef 來追蹤是否已經初始化，避免無限循環
@@ -289,10 +361,13 @@ export default function App() {
       };
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+      
+      // 同時更新最後開啟日期
+      localStorage.setItem(LAST_OPEN_DATE_KEY, getTodayDateString());
     } catch (error) {
       console.error('Auto-save failed:', error);
     }
-  }, [nodes, edges]);
+  }, [nodes, edges, getTodayDateString]);
 
   // 連接兩節點時新增一條邊
   const onConnect = useCallback(
