@@ -11,7 +11,10 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
 
   // 當節點數據改變時更新表單
   useEffect(() => {
-    if (node) {
+    if (!node) return;
+    
+    // 使用 setTimeout 來避免同步 setState 問題
+    const timer = setTimeout(() => {
       setFormData({
         habitName: node.data?.habitName || node.data?.label || '',
         notes: node.data?.notes || '',
@@ -19,7 +22,9 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
         targetCount: node.data?.targetCount || 0,
         completedDays: node.data?.completedDays || [],
       });
-    }
+    }, 0);
+    
+    return () => clearTimeout(timer);
   }, [node]);
 
   if (!isOpen || !node) return null;

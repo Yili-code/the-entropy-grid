@@ -211,7 +211,29 @@ export default function App() {
       try {
         const { nodes: savedNodes, edges: savedEdges } = JSON.parse(saved);
         if (savedNodes && savedNodes.length > 0) {
-          initialNodes = savedNodes;
+          // 確保所有節點都有完整的數據結構
+          initialNodes = savedNodes.map((node) => {
+            if (node.type === 'colorPicker') {
+              return {
+                ...node,
+                data: {
+                  // 保留現有數據
+                  ...node.data,
+                  // 確保所有新字段都有默認值
+                  habitName: node.data?.habitName || node.data?.label || '',
+                  isDone: node.data?.isDone ?? false,
+                  notes: node.data?.notes || '',
+                  optimizationRecord: node.data?.optimizationRecord || '',
+                  targetCount: node.data?.targetCount ?? 0,
+                  completedDays: Array.isArray(node.data?.completedDays) 
+                    ? node.data.completedDays 
+                    : [],
+                  color: node.data?.color || '#00f3ff',
+                },
+              };
+            }
+            return node;
+          });
         }
         if (savedEdges && savedEdges.length > 0) {
           initialEdges = savedEdges;
@@ -241,13 +263,24 @@ export default function App() {
       localStorage.setItem(LAST_OPEN_DATE_KEY, today);
     }
 
-    // 為初始節點添加回調函數
+    // 為初始節點添加回調函數並確保數據完整性（Function Re-binding）
     initialNodes = initialNodes.map((node) => {
       if (node.type === 'colorPicker') {
         return {
           ...node,
           data: {
+            // 保留所有現有數據
             ...node.data,
+            // 確保所有字段都有值（防止讀取舊數據時缺少新字段）
+            habitName: node.data?.habitName || node.data?.label || '',
+            isDone: node.data?.isDone ?? false,
+            notes: node.data?.notes || '',
+            optimizationRecord: node.data?.optimizationRecord || '',
+            targetCount: node.data?.targetCount ?? 0,
+            completedDays: Array.isArray(node.data?.completedDays) 
+              ? node.data.completedDays 
+              : [],
+            // 重新綁定所有回調函數（Function Re-binding）
             onChange: onColorChange,
             onDelete: onDeleteNode,
             onToggleDone: onToggleDone,
@@ -312,7 +345,18 @@ export default function App() {
           return {
             ...node,
             data: {
+              // 保留所有現有數據
               ...node.data,
+              // 確保所有字段都有值
+              habitName: node.data?.habitName || node.data?.label || '',
+              isDone: node.data?.isDone ?? false,
+              notes: node.data?.notes || '',
+              optimizationRecord: node.data?.optimizationRecord || '',
+              targetCount: node.data?.targetCount ?? 0,
+              completedDays: Array.isArray(node.data?.completedDays) 
+                ? node.data.completedDays 
+                : [],
+              // 重新綁定所有回調函數（Function Re-binding）
               onChange: onColorChange,
               onDelete: onDeleteNode,
               onToggleDone: onToggleDone,
@@ -341,6 +385,7 @@ export default function App() {
     
     try {
       // 清理節點數據，移除函數引用以便序列化
+      // 確保所有數據字段都被正確保存
       const cleanNodes = nodes.map((node) => {
         const { 
           onChange: _onChange, 
@@ -349,9 +394,23 @@ export default function App() {
           onDetail: _onDetail,
           ...cleanData 
         } = node.data || {};
+        
+        // 確保所有必要字段都存在（防止序列化時丟失）
         return {
           ...node,
-          data: cleanData,
+          data: {
+            // 保留所有數據字段
+            ...cleanData,
+            // 明確確保關鍵字段存在
+            habitName: cleanData.habitName || cleanData.label || '',
+            isDone: cleanData.isDone ?? false,
+            notes: cleanData.notes || '',
+            optimizationRecord: cleanData.optimizationRecord || '',
+            targetCount: cleanData.targetCount ?? 0,
+            completedDays: Array.isArray(cleanData.completedDays) 
+              ? cleanData.completedDays 
+              : [],
+          },
         };
       });
 
@@ -392,6 +451,10 @@ export default function App() {
           label: `NODE_${nds.length + 1}`,
           habitName: `習慣 ${nds.length + 1}`,
           isDone: false,
+          notes: '',
+          optimizationRecord: '',
+          targetCount: 0,
+          completedDays: [],
           color: randomColor,
           onChange: onColorChange,
           onDelete: onDeleteNode,
@@ -411,6 +474,7 @@ export default function App() {
   // 手動存檔函數
   const handleManualSave = useCallback(() => {
       // 清理節點數據，移除函數引用以便序列化
+      // 確保所有數據字段都被正確保存
       const cleanNodes = nodes.map((node) => {
         const { 
           onChange: _onChange, 
@@ -419,9 +483,23 @@ export default function App() {
           onDetail: _onDetail,
           ...cleanData 
         } = node.data || {};
+        
+        // 確保所有必要字段都存在（防止序列化時丟失）
         return {
           ...node,
-          data: cleanData,
+          data: {
+            // 保留所有數據字段
+            ...cleanData,
+            // 明確確保關鍵字段存在
+            habitName: cleanData.habitName || cleanData.label || '',
+            isDone: cleanData.isDone ?? false,
+            notes: cleanData.notes || '',
+            optimizationRecord: cleanData.optimizationRecord || '',
+            targetCount: cleanData.targetCount ?? 0,
+            completedDays: Array.isArray(cleanData.completedDays) 
+              ? cleanData.completedDays 
+              : [],
+          },
         };
       });
 
