@@ -533,6 +533,148 @@ export default function App() {
     }
   }, [nodes, edges]);
 
+  // 匯出 JSON 函數
+  const handleExportJSON = useCallback(() => {
+    try {
+      // 清理節點數據，移除函數引用以便序列化
+      const cleanNodes = nodes.map((node) => {
+        const { 
+          onChange: _onChange, 
+          onDelete: _onDelete, 
+          onToggleDone: _onToggleDone,
+          onDetail: _onDetail,
+          ...cleanData 
+        } = node.data || {};
+        
+        return {
+          ...node,
+          data: {
+            ...cleanData,
+            habitName: cleanData.habitName || cleanData.label || '',
+            isDone: cleanData.isDone ?? false,
+            notes: cleanData.notes || '',
+            optimizationRecord: cleanData.optimizationRecord || '',
+            targetCount: cleanData.targetCount ?? 0,
+            completedDays: Array.isArray(cleanData.completedDays) 
+              ? cleanData.completedDays 
+              : [],
+          },
+        };
+      });
+
+      const dataToExport = { 
+        nodes: cleanNodes, 
+        edges,
+        exportedAt: new Date().toISOString(),
+        version: '1.0'
+      };
+      
+      const jsonString = JSON.stringify(dataToExport, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `entropy-grid-export-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export:', error);
+      alert('匯出失敗！');
+    }
+  }, [nodes, edges]);
+
+  // 導入 JSON 函數
+  const handleImportJSON = useCallback((event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const importedData = JSON.parse(e.target.result);
+        
+        if (!importedData.nodes || !Array.isArray(importedData.nodes)) {
+          alert('無效的 JSON 文件格式！');
+          return;
+        }
+
+        // 確認導入
+        if (!window.confirm('導入數據將覆蓋現有數據，確定要繼續嗎？')) {
+          event.target.value = ''; // 重置文件輸入
+          return;
+        }
+
+        // 處理導入的節點數據
+        const importedNodes = importedData.nodes.map((node) => {
+          if (node.type === 'colorPicker') {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                habitName: node.data?.habitName || node.data?.label || '',
+                isDone: node.data?.isDone ?? false,
+                notes: node.data?.notes || '',
+                optimizationRecord: node.data?.optimizationRecord || '',
+                targetCount: node.data?.targetCount ?? 0,
+                completedDays: Array.isArray(node.data?.completedDays) 
+                  ? node.data.completedDays 
+                  : [],
+                color: node.data?.color || '#00f3ff',
+                // 重新綁定回調函數
+                onChange: onColorChange,
+                onDelete: onDeleteNode,
+                onToggleDone: onToggleDone,
+                onDetail: onDetail,
+              },
+            };
+          }
+          return node;
+        });
+
+        const importedEdges = Array.isArray(importedData.edges) ? importedData.edges : [];
+
+        // 更新節點和邊
+        setNodes(importedNodes);
+        setEdges(importedEdges);
+
+        // 同時保存到 LocalStorage
+        const cleanNodes = importedNodes.map((node) => {
+          const { 
+            onChange: _onChange, 
+            onDelete: _onDelete, 
+            onToggleDone: _onToggleDone,
+            onDetail: _onDetail,
+            ...cleanData 
+          } = node.data || {};
+          
+          return {
+            ...node,
+            data: cleanData,
+          };
+        });
+
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({ 
+          nodes: cleanNodes, 
+          edges: importedEdges 
+        }));
+
+        alert('導入成功！');
+      } catch (error) {
+        console.error('Failed to import:', error);
+        alert('導入失敗！請檢查 JSON 文件格式是否正確。');
+      }
+    };
+
+    reader.onerror = () => {
+      alert('讀取文件失敗！');
+    };
+
+    reader.readAsText(file);
+    event.target.value = ''; // 重置文件輸入，允許重新選擇同一文件
+  }, [onColorChange, onDeleteNode, onToggleDone, onDetail, setNodes, setEdges]);
+
   return (
     <div style={{ 
       width: '100vw', 
@@ -648,6 +790,75 @@ export default function App() {
             >
               💾 SAVE
             </button>
+            <button
+              onClick={handleExportJSON}
+              className="cyberpunk-button"
+              style={{
+                padding: '12px 24px',
+                borderRadius: '0',
+                background: 'rgba(10, 10, 10, 0.8)',
+                color: '#bc13fe',
+                border: '1px solid #bc13fe',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '14px',
+                fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
+                boxShadow: '0 0 10px rgba(188, 19, 254, 0.5), inset 0 0 10px rgba(188, 19, 254, 0.1)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                backdropFilter: 'blur(10px)',
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.boxShadow = '0 0 20px rgba(188, 19, 254, 0.8), inset 0 0 20px rgba(188, 19, 254, 0.2)';
+                e.target.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.boxShadow = '0 0 10px rgba(188, 19, 254, 0.5), inset 0 0 10px rgba(188, 19, 254, 0.1)';
+                e.target.style.transform = 'scale(1)';
+              }}
+            >
+              📤 EXPORT JSON
+            </button>
+            <label
+              className="cyberpunk-button"
+              style={{
+                padding: '12px 24px',
+                borderRadius: '0',
+                background: 'rgba(10, 10, 10, 0.8)',
+                color: '#ff007f',
+                border: '1px solid #ff007f',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '14px',
+                fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
+                boxShadow: '0 0 10px rgba(255, 0, 127, 0.5), inset 0 0 10px rgba(255, 0, 127, 0.1)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                backdropFilter: 'blur(10px)',
+                display: 'block',
+                textAlign: 'center',
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.boxShadow = '0 0 20px rgba(255, 0, 127, 0.8), inset 0 0 20px rgba(255, 0, 127, 0.2)';
+                e.target.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.boxShadow = '0 0 10px rgba(255, 0, 127, 0.5), inset 0 0 10px rgba(255, 0, 127, 0.1)';
+                e.target.style.transform = 'scale(1)';
+              }}
+            >
+              📥 IMPORT JSON
+              <input
+                type="file"
+                accept=".json"
+                onChange={handleImportJSON}
+                style={{
+                  display: 'none',
+                }}
+              />
+            </label>
           </div>
         </Panel>
         <Controls 
