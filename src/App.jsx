@@ -19,26 +19,45 @@ export default function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]); 
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  const onColorChange = useCallback((id, newColor) => {
-    setNodes((nds) =>
-      nds.map((node) => {
-        if (node.id === id) {
-          return {
-            ...node,
-            data: { ...node.data, color: newColor },
-          };
-        }
-        return node;
-      })
-    );
-  }, [setNodes]);
+  // 更新節點顏色
+  const onColorChange = useCallback(
+    (id, newColor) => {
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === id) {
+            return {
+              ...node,
+              data: { ...node.data, color: newColor },
+            };
+          }
+          return node;
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  // 刪除節點和相關邊
+  const onDeleteNode = useCallback(
+    (id) => {
+      setNodes((nds) => nds.filter((node) => node.id !== id));
+      setEdges((eds) => eds.filter((edge) => edge.source !== id && edge.target !== id));
+    }, 
+    [setNodes, setEdges]
+  );
 
   React.useEffect(() => {
+    // 副作用邏輯: 初始化節點和邊
     const initialNodes = [
       { 
         id: '1',
         type: 'colorPicker',
-        data: { label: '選個顏色!', color: '#ff0000', onChange: onColorChange }, 
+        data: { 
+          label: '選個顏色!', 
+          color: '#ff0000', 
+          onChange: onColorChange,
+          onDelete: onDeleteNode 
+        }, 
         position: { x: 100, y: 100 } 
       },
       { 
@@ -48,35 +67,42 @@ export default function App() {
         position: { x: 100, y: 300 } 
       }
     ];
+    // 更新節點和邊
     setNodes(initialNodes);
     setEdges([{ id: 'e1-2', source: '1', target: '2', animated: true }]);
-  }, [onColorChange, setNodes, setEdges]);
+  }, [onColorChange, onDeleteNode, setNodes, setEdges]);
 
+  // 連接兩節點時新增一條邊
   const onConnect = useCallback(
     (params) => setEdges((eds) => addEdge(params, eds)),
     [setEdges]
   );
 
-  const addNewNode = () => {
-    const newNodeId = `node_${Date.now()}`;
+  const addNewNode = useCallback(() => {
+    // 使用 useRef 或函數式更新來避免在渲染期間調用不純函數
+    setNodes((nds) => {
+      const newNodeId = `node_${Date.now()}`;
+      const newX = Math.random() * 400;
+      const newY = Math.random() * 400;
 
-    const newNode = {
-      id: newNodeId, 
-      type: 'colorPicker',
-      data: {
-        label: `新節點 ${nodes.length + 1}`,
-        color: '#ffffff',
-        onChange: onColorChange
-      },
+      const newNode = {
+        id: newNodeId, 
+        type: 'colorPicker',
+        data: {
+          label: `新節點 ${nds.length + 1}`,
+          color: '#ffffff',
+          onChange: onColorChange,
+          onDelete: onDeleteNode
+        },
+        position: {
+          x: newX,
+          y: newY
+        },
+      };
 
-      position: {
-        x: Math.random() * 400,
-        y: Math.random() * 400
-      },
-    };
-
-    setNodes((nds) => nds.concat(newNode));
-  };
+      return nds.concat(newNode);
+    });
+  }, [onColorChange, onDeleteNode, setNodes]);
 
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#f8f9fa' }}>
@@ -88,6 +114,8 @@ export default function App() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         fitView
+        connectionMode="loose" // 允許節點之間有多條連接
+        defaultEdgeOptions={{ animated: true }}
       >
         <Panel position="top-right">
           <button
