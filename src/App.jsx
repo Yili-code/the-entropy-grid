@@ -15,8 +15,31 @@ const nodeTypes = {
   colorPicker: ColorSelectorNode,
 };
 
+const STORAGE_KEY = 'react-flow-data';
+
+// 定義默認初始節點和邊
+const defaultInitialNodes = [
+  { 
+    id: '0', 
+    type: 'default',
+    data: { label: 'Center' },
+    position: { x: 0, y: 0 } 
+  },
+  { 
+    id: '1',
+    type: 'colorPicker',
+    data: { 
+      label: 'NODE_01', 
+      color: '#ff007f'
+    }, 
+    position: { x: 0, y: 200 } 
+  }
+];
+const defaultInitialEdges = [{ id: 'e0-1', source: '0', target: '1', animated: true }];
+
 export default function App() {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]); 
+
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   // 更新節點顏色
@@ -46,31 +69,84 @@ export default function App() {
     [setNodes, setEdges]
   );
 
+  // 從 LocalStorage 嘗試讀取並初始化
   React.useEffect(() => {
-    // 副作用邏輯: 初始化節點和邊
-    const initialNodes = [
-      { 
-        id: '0', 
-        type: 'default',
-        data: { label: 'Center' },
-        position: { x: 0, y: 0 } 
-      },
-      { 
-        id: '1',
-        type: 'colorPicker',
-        data: { 
-          label: 'NODE_01', 
-          color: '#ff007f', 
-          onChange: onColorChange,
-          onDelete: onDeleteNode 
-        }, 
-        position: { x: 0, y: 200 } 
+    const saved = localStorage.getItem(STORAGE_KEY);
+    let initialNodes = defaultInitialNodes;
+    let initialEdges = defaultInitialEdges;
+
+    if (saved) {
+      try {
+        const { nodes: savedNodes, edges: savedEdges } = JSON.parse(saved);
+        if (savedNodes && savedNodes.length > 0) {
+          initialNodes = savedNodes.map((node) => {
+            if (node.type === 'colorPicker') {
+              return {
+                ...node,
+                data: {
+                  ...node.data,
+                  onChange: onColorChange,
+                  onDelete: onDeleteNode,
+                },
+              };
+            }
+            return node;
+          });
+        }
+        if (savedEdges && savedEdges.length > 0) {
+          initialEdges = savedEdges;
+        }
+      } catch (error) {
+        console.error('Failed to parse saved data:', error);
       }
-    ];
-    // 更新節點和邊
+    }
+
+    // 為初始節點添加回調函數
+    initialNodes = initialNodes.map((node) => {
+      if (node.type === 'colorPicker') {
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            onChange: onColorChange,
+            onDelete: onDeleteNode,
+          },
+        };
+      }
+      return node;
+    });
+
     setNodes(initialNodes);
-    setEdges([{ id: 'e0-1', source: '0', target: '1', animated: true }]);
+    setEdges(initialEdges);
   }, [onColorChange, onDeleteNode, setNodes, setEdges]);
+
+  // 自動保存節點和邊到本地儲存（清理函數引用）
+  React.useEffect(() => {
+    // 只在有節點或邊時才保存，避免初始化時覆蓋
+    if (nodes.length === 0 && edges.length === 0) {
+      return;
+    }
+    
+    try {
+      // 清理節點數據，移除函數引用以便序列化
+      const cleanNodes = nodes.map((node) => {
+        const { onChange: _onChange, onDelete: _onDelete, ...cleanData } = node.data || {};
+        return {
+          ...node,
+          data: cleanData,
+        };
+      });
+
+      const dataToSave = { 
+        nodes: cleanNodes, 
+        edges
+      };
+      
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    }
+  }, [nodes, edges]);
 
   // 連接兩節點時新增一條邊
   const onConnect = useCallback(
@@ -79,7 +155,6 @@ export default function App() {
   );
 
   const addNewNode = useCallback(() => {
-    // 使用 useRef 或函數式更新來避免在渲染期間調用不純函數
     setNodes((nds) => {
       const newNodeId = `node_${Date.now()}`;
       const newX = Math.random() * 800 - 400;
@@ -107,6 +182,47 @@ export default function App() {
       return nds.concat(newNode);
     });
   }, [onColorChange, onDeleteNode, setNodes]);
+
+  // 手動存檔函數
+  const handleManualSave = useCallback(() => {
+    // 清理節點數據，移除函數引用以便序列化
+    const cleanNodes = nodes.map((node) => {
+      const { onChange: _onChange, onDelete: _onDelete, ...cleanData } = node.data || {};
+      return {
+        ...node,
+        data: cleanData,
+      };
+    });
+
+    const dataToSave = { 
+      nodes: cleanNodes, 
+      edges,
+      savedAt: new Date().toISOString()
+    };
+    
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
+      // 顯示保存成功提示
+      const saveButton = document.querySelector('.save-button');
+      if (saveButton) {
+        const originalText = saveButton.textContent;
+        saveButton.textContent = '✓ SAVED';
+        saveButton.style.color = '#10b981';
+        saveButton.style.borderColor = '#10b981';
+        saveButton.style.boxShadow = '0 0 20px rgba(16, 185, 129, 0.8), inset 0 0 20px rgba(16, 185, 129, 0.2)';
+        
+        setTimeout(() => {
+          saveButton.textContent = originalText;
+          saveButton.style.color = '#00f3ff';
+          saveButton.style.borderColor = '#00f3ff';
+          saveButton.style.boxShadow = '0 0 10px rgba(0, 243, 255, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.1)';
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Failed to save:', error);
+      alert('存檔失敗！');
+    }
+  }, [nodes, edges]);
 
   return (
     <div style={{ 
@@ -158,36 +274,72 @@ export default function App() {
         }}
       >
         <Panel position="top-right">
-          <button
-            onClick={addNewNode}
-            className="cyberpunk-button"
-            style={{
-              padding: '12px 24px',
-              borderRadius: '0',
-              background: 'rgba(10, 10, 10, 0.8)',
-              color: '#00f3ff',
-              border: '1px solid #00f3ff',
-              cursor: 'pointer',
-              fontWeight: '600',
-              fontSize: '14px',
-              fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
-              boxShadow: '0 0 10px rgba(0, 243, 255, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.1)',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              letterSpacing: '1px',
-              textTransform: 'uppercase',
-              backdropFilter: 'blur(10px)',
-            }}
-            onMouseEnter={(e) => {
-              e.target.style.boxShadow = '0 0 20px rgba(0, 243, 255, 0.8), inset 0 0 20px rgba(0, 243, 255, 0.2)';
-              e.target.style.transform = 'scale(1.05)';
-            }}
-            onMouseLeave={(e) => {
-              e.target.style.boxShadow = '0 0 10px rgba(0, 243, 255, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.1)';
-              e.target.style.transform = 'scale(1)';
-            }}
-          >
-            + ADD NODE
-          </button>
+          <div style={{
+            display: 'flex',
+            gap: '12px',
+            flexDirection: 'column',
+          }}>
+            <button
+              onClick={addNewNode}
+              className="cyberpunk-button"
+              style={{
+                padding: '12px 24px',
+                borderRadius: '0',
+                background: 'rgba(10, 10, 10, 0.8)',
+                color: '#00f3ff',
+                border: '1px solid #00f3ff',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '14px',
+                fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
+                boxShadow: '0 0 10px rgba(0, 243, 255, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.1)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                backdropFilter: 'blur(10px)',
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.boxShadow = '0 0 20px rgba(0, 243, 255, 0.8), inset 0 0 20px rgba(0, 243, 255, 0.2)';
+                e.target.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.boxShadow = '0 0 10px rgba(0, 243, 255, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.1)';
+                e.target.style.transform = 'scale(1)';
+              }}
+            >
+              + ADD NODE
+            </button>
+            <button
+              onClick={handleManualSave}
+              className="cyberpunk-button save-button"
+              style={{
+                padding: '12px 24px',
+                borderRadius: '0',
+                background: 'rgba(10, 10, 10, 0.8)',
+                color: '#00f3ff',
+                border: '1px solid #00f3ff',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '14px',
+                fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
+                boxShadow: '0 0 10px rgba(0, 243, 255, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.1)',
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                letterSpacing: '1px',
+                textTransform: 'uppercase',
+                backdropFilter: 'blur(10px)',
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.boxShadow = '0 0 20px rgba(0, 243, 255, 0.8), inset 0 0 20px rgba(0, 243, 255, 0.2)';
+                e.target.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.boxShadow = '0 0 10px rgba(0, 243, 255, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.1)';
+                e.target.style.transform = 'scale(1)';
+              }}
+            >
+              💾 SAVE
+            </button>
+          </div>
         </Panel>
         <Controls 
           style={{
