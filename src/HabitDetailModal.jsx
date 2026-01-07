@@ -40,13 +40,21 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
     return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
   }).length;
 
+  // 獲取今天的日期字符串 (YYYY-MM-DD)
+  const getTodayDateString = () => {
+    return new Date().toISOString().split('T')[0];
+  };
+
+  const todayDateStr = getTodayDateString();
+
   // 生成本月日曆視圖（30天）
   const daysInMonth = 30;
   const monthDays = Array.from({ length: daysInMonth }, (_, i) => {
     const day = i + 1;
     const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     const isCompleted = formData.completedDays.includes(dateStr);
-    return { day, dateStr, isCompleted };
+    const isFuture = dateStr > todayDateStr; // 檢查是否為未來日期
+    return { day, dateStr, isCompleted, isFuture };
   });
 
   const handleSave = () => {
@@ -270,41 +278,47 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
               gridTemplateColumns: 'repeat(10, 1fr)',
               gap: '4px',
             }}>
-              {monthDays.map(({ day, isCompleted }) => (
+              {monthDays.map(({ day, isCompleted, isFuture, dateStr }) => (
                 <div
                   key={day}
                   style={{
                     aspectRatio: '1',
                     background: isCompleted 
                       ? glowColor 
+                      : isFuture
+                      ? 'rgba(255, 255, 255, 0.05)'
                       : 'rgba(255, 255, 255, 0.1)',
-                    border: `1px solid ${isCompleted ? glowColor : 'rgba(255, 255, 255, 0.2)'}`,
+                    border: `1px solid ${isCompleted ? glowColor : isFuture ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.2)'}`,
                     boxShadow: isCompleted ? `0 0 5px ${glowColor}` : 'none',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: '10px',
-                    color: isCompleted ? '#000' : '#888',
-                    cursor: 'pointer',
+                    color: isCompleted ? '#000' : isFuture ? '#444' : '#888',
+                    cursor: isFuture ? 'not-allowed' : 'pointer',
                     transition: 'all 0.2s',
+                    opacity: isFuture ? 0.4 : 1,
                   }}
                   onClick={() => {
-                    const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    // 禁止勾選未來日期
+                    if (isFuture) return;
+                    
                     const newCompletedDays = isCompleted
                       ? formData.completedDays.filter(d => d !== dateStr)
                       : [...formData.completedDays, dateStr];
                     handleInputChange('completedDays', newCompletedDays);
                   }}
                   onMouseEnter={(e) => {
-                    if (!isCompleted) {
+                    if (!isCompleted && !isFuture) {
                       e.target.style.background = glowColor + '40';
                     }
                   }}
                   onMouseLeave={(e) => {
-                    if (!isCompleted) {
+                    if (!isCompleted && !isFuture) {
                       e.target.style.background = 'rgba(255, 255, 255, 0.1)';
                     }
                   }}
+                  title={isFuture ? '無法勾選未來日期' : ''}
                 >
                   {day}
                 </div>

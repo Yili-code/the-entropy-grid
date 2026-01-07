@@ -2,6 +2,7 @@ import 'reactflow/dist/style.css';
 import React, { useCallback, useEffect, useState } from 'react';
 import ColorSelectorNode from './ColorSelectorNode';
 import HabitDetailModal from './HabitDetailModal';
+import CustomEdge from './CustomEdge';
 import ReactFlow, { 
   MiniMap, 
   Controls, 
@@ -16,8 +17,48 @@ const nodeTypes = {
   colorPicker: ColorSelectorNode,
 };
 
+const edgeTypes = {
+  default: CustomEdge,
+};
+
 const STORAGE_KEY = 'react-flow-data';
 const LAST_OPEN_DATE_KEY = 'last-open-date';
+
+// 顏色系統：從深灰色開始，每 2^n 天解鎖一個新顏色（確保顏色有明顯區別）
+const COLOR_SYSTEM = [
+  '#1a1a1a', // 0天：深灰色（比純黑更明顯）
+  '#ff007f', // 2天：霓虹粉
+  '#00f3ff', // 4天：霓虹青
+  '#ffd700', // 8天：金色
+  '#00ff00', // 16天：霓虹綠
+  '#ff4500', // 32天：橙紅色
+  '#ff1493', // 64天：深粉紅
+  '#00ced1', // 128天：深青色
+  '#9370db', // 256天：中紫色
+  '#ff00ff', // 512天：洋紅色
+];
+
+// 計算已解鎖的顏色列表（基於完成天數）
+const getUnlockedColors = (completedDaysCount) => {
+  const unlockedColors = [];
+  for (let i = 0; i < COLOR_SYSTEM.length; i++) {
+    const milestone = Math.pow(2, i);
+    if (completedDaysCount >= milestone) {
+      unlockedColors.push(COLOR_SYSTEM[i]);
+    }
+  }
+  // 如果沒有任何解鎖的顏色，至少返回深灰色
+  if (unlockedColors.length === 0) {
+    unlockedColors.push(COLOR_SYSTEM[0]);
+  }
+  return unlockedColors;
+};
+
+// 根據完成天數獲取應該使用的顏色（自動選擇最新解鎖的顏色）
+const getColorForMilestone = (completedDaysCount) => {
+  const unlockedColors = getUnlockedColors(completedDaysCount);
+  return unlockedColors[unlockedColors.length - 1]; // 返回最新解鎖的顏色
+};
 
 // 定義默認初始節點和邊
 const defaultInitialNodes = [
@@ -38,12 +79,19 @@ const defaultInitialNodes = [
       optimizationRecord: '',
       targetCount: 0,
       completedDays: [],
-      color: '#ff007f'
+          color: '#1a1a1a', // 初始為深灰色
+          unlockedColors: ['#1a1a1a'], // 初始只解鎖深灰色
     }, 
     position: { x: 0, y: 200 } 
   }
 ];
-const defaultInitialEdges = [{ id: 'e0-1', source: '0', target: '1', animated: true }];
+const defaultInitialEdges = [{ 
+  id: 'e0-1', 
+  source: '0', 
+  target: '1', 
+  type: 'default',
+  animated: true 
+}];
 
 export default function App() {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -86,7 +134,7 @@ export default function App() {
     }
   }, [getTodayDateString, resetDailyCheckboxes]);
 
-  // 更新節點顏色
+  // 更新節點顏色（保留用於向後兼容）
   const onColorChange = useCallback(
     (id, newColor) => {
       setNodes((nds) =>
@@ -96,6 +144,28 @@ export default function App() {
               ...node,
               data: { ...node.data, color: newColor },
             };
+          }
+          return node;
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  // 切換節點顏色（只能在已解鎖的顏色中選擇）
+  const onColorSwitch = useCallback(
+    (id, newColor) => {
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === id) {
+            const unlockedColors = node.data?.unlockedColors || ['#1a1a1a'];
+            // 確保新顏色在已解鎖的顏色列表中
+            if (unlockedColors.includes(newColor)) {
+              return {
+                ...node,
+                data: { ...node.data, color: newColor },
+              };
+            }
           }
           return node;
         })
@@ -135,12 +205,31 @@ export default function App() {
               newCompletedDays = completedDays.filter(date => date !== today);
             }
             
+            // 計算新的完成天數
+            const newCompletedDaysCount = newCompletedDays.length;
+            
+            // 計算已解鎖的顏色
+            const newUnlockedColors = getUnlockedColors(newCompletedDaysCount);
+            
+            // 檢查是否達到新的里程碑（2^n）
+            const oldCompletedDaysCount = completedDays.length;
+            const oldUnlockedColors = getUnlockedColors(oldCompletedDaysCount);
+            const reachedNewMilestone = newUnlockedColors.length > oldUnlockedColors.length;
+            
+            // 如果達到新里程碑，自動切換到最新解鎖的顏色
+            let newColor = node.data?.color || '#1a1a1a';
+            if (reachedNewMilestone && isDone) {
+              newColor = getColorForMilestone(newCompletedDaysCount);
+            }
+            
             return {
               ...node,
               data: { 
                 ...node.data, 
                 isDone,
                 completedDays: newCompletedDays,
+                unlockedColors: newUnlockedColors,
+                color: newColor,
               },
             };
           }
@@ -172,6 +261,12 @@ export default function App() {
       setNodes((nds) =>
         nds.map((node) => {
           if (node.id === nodeId) {
+            const completedDays = Array.isArray(formData.completedDays) 
+              ? formData.completedDays 
+              : [];
+            const completedDaysCount = completedDays.length;
+            const unlockedColors = getUnlockedColors(completedDaysCount);
+            
             return {
               ...node,
               data: {
@@ -180,9 +275,10 @@ export default function App() {
                 notes: formData.notes,
                 optimizationRecord: formData.optimizationRecord,
                 targetCount: formData.targetCount,
-                completedDays: formData.completedDays,
+                completedDays: completedDays,
+                unlockedColors: unlockedColors,
                 // 如果完成天數有變化，更新 isDone 狀態（如果今天已完成）
-                isDone: formData.completedDays.includes(
+                isDone: completedDays.includes(
                   new Date().toISOString().split('T')[0]
                 ),
               },
@@ -214,6 +310,13 @@ export default function App() {
           // 確保所有節點都有完整的數據結構
           initialNodes = savedNodes.map((node) => {
             if (node.type === 'colorPicker') {
+              const completedDays = Array.isArray(node.data?.completedDays) 
+                ? node.data.completedDays 
+                : [];
+              const completedDaysCount = completedDays.length;
+              const unlockedColors = getUnlockedColors(completedDaysCount);
+              const currentColor = node.data?.color || getColorForMilestone(completedDaysCount);
+              
               return {
                 ...node,
                 data: {
@@ -225,10 +328,9 @@ export default function App() {
                   notes: node.data?.notes || '',
                   optimizationRecord: node.data?.optimizationRecord || '',
                   targetCount: node.data?.targetCount ?? 0,
-                  completedDays: Array.isArray(node.data?.completedDays) 
-                    ? node.data.completedDays 
-                    : [],
-                  color: node.data?.color || '#00f3ff',
+                  completedDays: completedDays,
+                  unlockedColors: unlockedColors,
+                  color: currentColor,
                 },
               };
             }
@@ -247,7 +349,7 @@ export default function App() {
     const today = getTodayDateString();
     const lastOpenDate = localStorage.getItem(LAST_OPEN_DATE_KEY);
     if (!lastOpenDate || lastOpenDate !== today) {
-      // 重置所有節點的 isDone
+      // 重置所有節點的 isDone（但保留 unlockedColors）
       initialNodes = initialNodes.map((node) => {
         if (node.type === 'colorPicker') {
           return {
@@ -266,6 +368,13 @@ export default function App() {
     // 為初始節點添加回調函數並確保數據完整性（Function Re-binding）
     initialNodes = initialNodes.map((node) => {
       if (node.type === 'colorPicker') {
+        const completedDays = Array.isArray(node.data?.completedDays) 
+          ? node.data.completedDays 
+          : [];
+        const completedDaysCount = completedDays.length;
+        const unlockedColors = node.data?.unlockedColors || getUnlockedColors(completedDaysCount);
+        const currentColor = node.data?.color || getColorForMilestone(completedDaysCount);
+        
         return {
           ...node,
           data: {
@@ -277,14 +386,15 @@ export default function App() {
             notes: node.data?.notes || '',
             optimizationRecord: node.data?.optimizationRecord || '',
             targetCount: node.data?.targetCount ?? 0,
-            completedDays: Array.isArray(node.data?.completedDays) 
-              ? node.data.completedDays 
-              : [],
+            completedDays: completedDays,
+            unlockedColors: unlockedColors,
+            color: currentColor,
             // 重新綁定所有回調函數（Function Re-binding）
             onChange: onColorChange,
             onDelete: onDeleteNode,
             onToggleDone: onToggleDone,
             onDetail: onDetail,
+            onColorSwitch: onColorSwitch,
           },
         };
       }
@@ -324,7 +434,8 @@ export default function App() {
       prevCallbacksRef.current.onChange !== onColorChange ||
       prevCallbacksRef.current.onDelete !== onDeleteNode ||
       prevCallbacksRef.current.onToggleDone !== onToggleDone ||
-      prevCallbacksRef.current.onDetail !== onDetail;
+      prevCallbacksRef.current.onDetail !== onDetail ||
+      prevCallbacksRef.current.onColorSwitch !== onColorSwitch;
     
     // 只在初始化完成後且回調函數改變時才更新
     if (!isInitializedRef.current || !callbacksChanged) {
@@ -333,6 +444,7 @@ export default function App() {
         onDelete: onDeleteNode,
         onToggleDone: onToggleDone,
         onDetail: onDetail,
+        onColorSwitch: onColorSwitch,
       };
       return;
     }
@@ -342,6 +454,12 @@ export default function App() {
       
       return nds.map((node) => {
         if (node.type === 'colorPicker') {
+          const completedDays = Array.isArray(node.data?.completedDays) 
+            ? node.data.completedDays 
+            : [];
+          const completedDaysCount = completedDays.length;
+          const unlockedColors = node.data?.unlockedColors || getUnlockedColors(completedDaysCount);
+          
           return {
             ...node,
             data: {
@@ -353,14 +471,14 @@ export default function App() {
               notes: node.data?.notes || '',
               optimizationRecord: node.data?.optimizationRecord || '',
               targetCount: node.data?.targetCount ?? 0,
-              completedDays: Array.isArray(node.data?.completedDays) 
-                ? node.data.completedDays 
-                : [],
+              completedDays: completedDays,
+              unlockedColors: unlockedColors,
               // 重新綁定所有回調函數（Function Re-binding）
               onChange: onColorChange,
               onDelete: onDeleteNode,
               onToggleDone: onToggleDone,
               onDetail: onDetail,
+              onColorSwitch: onColorSwitch,
             },
           };
         }
@@ -373,8 +491,9 @@ export default function App() {
       onDelete: onDeleteNode,
       onToggleDone: onToggleDone,
       onDetail: onDetail,
+      onColorSwitch: onColorSwitch,
     };
-  }, [onColorChange, onDeleteNode, onToggleDone, onDetail, setNodes]);
+  }, [onColorChange, onDeleteNode, onToggleDone, onDetail, onColorSwitch, setNodes]);
 
   // 自動保存節點和邊到本地儲存（清理函數引用）
   useEffect(() => {
@@ -392,8 +511,17 @@ export default function App() {
           onDelete: _onDelete, 
           onToggleDone: _onToggleDone,
           onDetail: _onDetail,
+          onColorSwitch: _onColorSwitch,
           ...cleanData 
         } = node.data || {};
+        
+        const completedDays = Array.isArray(cleanData.completedDays) 
+          ? cleanData.completedDays 
+          : [];
+        const completedDaysCount = completedDays.length;
+        const unlockedColors = Array.isArray(cleanData.unlockedColors) 
+          ? cleanData.unlockedColors 
+          : getUnlockedColors(completedDaysCount);
         
         // 確保所有必要字段都存在（防止序列化時丟失）
         return {
@@ -407,9 +535,9 @@ export default function App() {
             notes: cleanData.notes || '',
             optimizationRecord: cleanData.optimizationRecord || '',
             targetCount: cleanData.targetCount ?? 0,
-            completedDays: Array.isArray(cleanData.completedDays) 
-              ? cleanData.completedDays 
-              : [],
+            completedDays: completedDays,
+            unlockedColors: unlockedColors,
+            color: cleanData.color || getColorForMilestone(completedDaysCount),
           },
         };
       });
@@ -434,15 +562,35 @@ export default function App() {
     [setEdges]
   );
 
+  // 刪除邊的處理函數
+  const onDeleteEdge = useCallback(
+    (edgeId) => {
+      setEdges((eds) => eds.filter((edge) => edge.id !== edgeId));
+    },
+    [setEdges]
+  );
+
+  // 監聽刪除邊的自定義事件
+  useEffect(() => {
+    const handleDeleteEdge = (event) => {
+      const { edgeId } = event.detail;
+      onDeleteEdge(edgeId);
+    };
+
+    window.addEventListener('deleteEdge', handleDeleteEdge);
+    return () => {
+      window.removeEventListener('deleteEdge', handleDeleteEdge);
+    };
+  }, [onDeleteEdge]);
+
   const addNewNode = useCallback(() => {
     setNodes((nds) => {
       const newNodeId = `node_${Date.now()}`;
       const newX = Math.random() * 800 - 400;
       const newY = Math.random() * 800 - 400;
 
-      // 隨機選擇霓虹色
-      const neonColors = ['#ff007f', '#00f3ff', '#bc13fe'];
-      const randomColor = neonColors[Math.floor(Math.random() * neonColors.length)];
+      // 新節點初始為深灰色，只解鎖深灰色
+      const initialUnlockedColors = ['#1a1a1a'];
 
       const newNode = {
         id: newNodeId, 
@@ -455,11 +603,13 @@ export default function App() {
           optimizationRecord: '',
           targetCount: 0,
           completedDays: [],
-          color: randomColor,
+          color: '#1a1a1a', // 初始為深灰色
+          unlockedColors: initialUnlockedColors,
           onChange: onColorChange,
           onDelete: onDeleteNode,
           onToggleDone: onToggleDone,
-          onDetail: onDetail
+          onDetail: onDetail,
+          onColorSwitch: onColorSwitch,
         },
         position: {
           x: newX,
@@ -469,7 +619,7 @@ export default function App() {
 
       return nds.concat(newNode);
     });
-  }, [onColorChange, onDeleteNode, onToggleDone, onDetail, setNodes]);
+  }, [onColorChange, onDeleteNode, onToggleDone, onDetail, onColorSwitch, setNodes]);
 
   // 手動存檔函數
   const handleManualSave = useCallback(() => {
@@ -481,8 +631,17 @@ export default function App() {
           onDelete: _onDelete, 
           onToggleDone: _onToggleDone,
           onDetail: _onDetail,
+          onColorSwitch: _onColorSwitch,
           ...cleanData 
         } = node.data || {};
+        
+        const completedDays = Array.isArray(cleanData.completedDays) 
+          ? cleanData.completedDays 
+          : [];
+        const completedDaysCount = completedDays.length;
+        const unlockedColors = Array.isArray(cleanData.unlockedColors) 
+          ? cleanData.unlockedColors 
+          : getUnlockedColors(completedDaysCount);
         
         // 確保所有必要字段都存在（防止序列化時丟失）
         return {
@@ -496,9 +655,9 @@ export default function App() {
             notes: cleanData.notes || '',
             optimizationRecord: cleanData.optimizationRecord || '',
             targetCount: cleanData.targetCount ?? 0,
-            completedDays: Array.isArray(cleanData.completedDays) 
-              ? cleanData.completedDays 
-              : [],
+            completedDays: completedDays,
+            unlockedColors: unlockedColors,
+            color: cleanData.color || getColorForMilestone(completedDaysCount),
           },
         };
       });
@@ -543,8 +702,17 @@ export default function App() {
           onDelete: _onDelete, 
           onToggleDone: _onToggleDone,
           onDetail: _onDetail,
+          onColorSwitch: _onColorSwitch,
           ...cleanData 
         } = node.data || {};
+        
+        const completedDays = Array.isArray(cleanData.completedDays) 
+          ? cleanData.completedDays 
+          : [];
+        const completedDaysCount = completedDays.length;
+        const unlockedColors = Array.isArray(cleanData.unlockedColors) 
+          ? cleanData.unlockedColors 
+          : getUnlockedColors(completedDaysCount);
         
         return {
           ...node,
@@ -555,9 +723,9 @@ export default function App() {
             notes: cleanData.notes || '',
             optimizationRecord: cleanData.optimizationRecord || '',
             targetCount: cleanData.targetCount ?? 0,
-            completedDays: Array.isArray(cleanData.completedDays) 
-              ? cleanData.completedDays 
-              : [],
+            completedDays: completedDays,
+            unlockedColors: unlockedColors,
+            color: cleanData.color || getColorForMilestone(completedDaysCount),
           },
         };
       });
@@ -609,6 +777,15 @@ export default function App() {
         // 處理導入的節點數據
         const importedNodes = importedData.nodes.map((node) => {
           if (node.type === 'colorPicker') {
+            const completedDays = Array.isArray(node.data?.completedDays) 
+              ? node.data.completedDays 
+              : [];
+            const completedDaysCount = completedDays.length;
+            const unlockedColors = Array.isArray(node.data?.unlockedColors) 
+              ? node.data.unlockedColors 
+              : getUnlockedColors(completedDaysCount);
+            const currentColor = node.data?.color || getColorForMilestone(completedDaysCount);
+            
             return {
               ...node,
               data: {
@@ -618,15 +795,15 @@ export default function App() {
                 notes: node.data?.notes || '',
                 optimizationRecord: node.data?.optimizationRecord || '',
                 targetCount: node.data?.targetCount ?? 0,
-                completedDays: Array.isArray(node.data?.completedDays) 
-                  ? node.data.completedDays 
-                  : [],
-                color: node.data?.color || '#00f3ff',
+                completedDays: completedDays,
+                unlockedColors: unlockedColors,
+                color: currentColor,
                 // 重新綁定回調函數
                 onChange: onColorChange,
                 onDelete: onDeleteNode,
                 onToggleDone: onToggleDone,
                 onDetail: onDetail,
+                onColorSwitch: onColorSwitch,
               },
             };
           }
@@ -646,6 +823,7 @@ export default function App() {
             onDelete: _onDelete, 
             onToggleDone: _onToggleDone,
             onDetail: _onDetail,
+            onColorSwitch: _onColorSwitch,
             ...cleanData 
           } = node.data || {};
           
@@ -673,7 +851,7 @@ export default function App() {
 
     reader.readAsText(file);
     event.target.value = ''; // 重置文件輸入，允許重新選擇同一文件
-  }, [onColorChange, onDeleteNode, onToggleDone, onDetail, setNodes, setEdges]);
+  }, [onColorChange, onDeleteNode, onToggleDone, onDetail, onColorSwitch, setNodes, setEdges]);
 
   return (
     <div style={{ 
@@ -714,12 +892,14 @@ export default function App() {
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         fitView
         connectionMode="loose"
         defaultEdgeOptions={{ 
+          type: 'default',
           animated: true,
           style: { strokeWidth: 3, stroke: '#00f3ff' },
         }}

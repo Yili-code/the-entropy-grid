@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Handle, Position } from 'reactflow';
 
-// 將顏色轉換為霓虹色調
+// 將顏色轉換為霓虹色調（用於發光效果）
 const convertToNeon = (color) => {
   if (!color) return '#00f3ff';
   // 如果已經是霓虹色，直接返回
-  if (['#ff007f', '#00f3ff', '#bc13fe'].includes(color.toLowerCase())) {
+  const neonColors = ['#ff007f', '#00f3ff', '#ffd700', '#00ff00', '#ff4500', '#ff1493', '#00ced1', '#9370db', '#ff00ff'];
+  if (neonColors.includes(color.toLowerCase())) {
     return color;
+  }
+  // 深灰色使用青色發光
+  if (color.toLowerCase() === '#1a1a1a') {
+    return '#00f3ff';
   }
   // 將其他顏色轉換為對應的霓虹色
   const hex = color.replace('#', '');
@@ -17,7 +22,8 @@ const convertToNeon = (color) => {
   // 根據主要顏色通道選擇霓虹色
   if (r > g && r > b) return '#ff007f'; // 偏紅 -> 霓虹粉
   if (b > r && b > g) return '#00f3ff'; // 偏藍 -> 霓虹青
-  return '#bc13fe'; // 其他 -> 霓虹紫
+  if (g > r && g > b) return '#00ff00'; // 偏綠 -> 霓虹綠
+  return '#00f3ff'; // 默認 -> 霓虹青
 };
 
 // 自定義節點組件
@@ -37,6 +43,7 @@ const ColorSelectorNode = ({ id, data }) => {
   }, []);
   
   const neonColor = convertToNeon(data.color);
+  const unlockedColors = data.unlockedColors || ['#1a1a1a'];
   
   // 計算發光強度
   const glowIntensity = isHovered ? 1.5 : 1;
@@ -122,6 +129,79 @@ const ColorSelectorNode = ({ id, data }) => {
       <Handle type="target" position={Position.Left} id="left-target" />
       <Handle type="source" position={Position.Left} id="left-source" />
       
+      {/* 左上角：已解鎖顏色列表（縱向排列） */}
+      <div
+        className="nodrag"
+        style={{
+          position: 'absolute',
+          top: '8px',
+          left: '8px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '4px',
+          zIndex: 10,
+        }}
+      >
+        {unlockedColors.map((color, index) => {
+          const isSelected = color === data.color;
+          const colorGlow = convertToNeon(color);
+          return (
+            <button
+              key={index}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (data.onColorSwitch) {
+                  data.onColorSwitch(id, color);
+                }
+              }}
+              style={{
+                width: '20px',
+                height: '20px',
+                borderRadius: '0',
+                border: `2px solid ${isSelected ? colorGlow : 'rgba(255, 255, 255, 0.2)'}`,
+                background: color,
+                cursor: 'pointer',
+                boxShadow: isSelected
+                  ? `0 0 10px ${colorGlow}, inset 0 0 8px ${colorGlow}40`
+                  : `0 0 3px ${colorGlow}20`,
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                position: 'relative',
+                padding: 0,
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.transform = 'scale(1.2)';
+                e.target.style.boxShadow = `0 0 15px ${colorGlow}, inset 0 0 10px ${colorGlow}60`;
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.transform = 'scale(1)';
+                e.target.style.boxShadow = isSelected
+                  ? `0 0 10px ${colorGlow}, inset 0 0 8px ${colorGlow}40`
+                  : `0 0 3px ${colorGlow}20`;
+              }}
+              title={color}
+            >
+              {isSelected && (
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    color: colorGlow,
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    textShadow: `0 0 8px ${colorGlow}`,
+                    lineHeight: 1,
+                  }}
+                >
+                  ✓
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
       {data.onDelete && (
       <button
         onClick={() => {
@@ -220,7 +300,7 @@ const ColorSelectorNode = ({ id, data }) => {
           }}
         />
         
-        {/* 底部：三條橫線（可點擊查看/編輯） */}
+        {/* 底部：三條橫線（可點擊查看詳情） */}
         <button
           onClick={() => {
             if (data.onDetail) {
