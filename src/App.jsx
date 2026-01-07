@@ -7,7 +7,8 @@ import ReactFlow, {
   Background, 
   useNodesState, 
   useEdgesState, 
-  addEdge 
+  addEdge,
+  Panel
 } from 'reactflow';
 
 const nodeTypes = {
@@ -56,6 +57,27 @@ export default function App() {
     [setEdges]
   );
 
+  const addNewNode = () => {
+    const newNodeId = `node_${Date.now()}`;
+
+    const newNode = {
+      id: newNodeId, 
+      type: 'colorPicker',
+      data: {
+        label: `新節點 ${nodes.length + 1}`,
+        color: '#ffffff',
+        onChange: onColorChange
+      },
+
+      position: {
+        x: Math.random() * 400,
+        y: Math.random() * 400
+      },
+    };
+
+    setNodes((nds) => nds.concat(newNode));
+  };
+
   return (
     <div style={{ width: '100vw', height: '100vh', background: '#f8f9fa' }}>
       <ReactFlow
@@ -67,6 +89,23 @@ export default function App() {
         onConnect={onConnect}
         fitView
       >
+        <Panel position="top-right">
+          <button
+            onClick={addNewNode}
+            style={{
+              padding: '10px 20px',
+              borderRadius: '5px', 
+              background: '#4CAF50',
+              color: 'white',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.2)'
+            }}
+          >
+           + 新增顏色節點
+          </button>
+        </Panel>
         <Controls />
         <MiniMap />
         <Background variant="lines" gap={12} size={1} />
