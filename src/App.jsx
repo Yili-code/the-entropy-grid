@@ -1,6 +1,7 @@
 import 'reactflow/dist/style.css';
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import ColorSelectorNode from './ColorSelectorNode';
+import HabitDetailModal from './HabitDetailModal';
 import ReactFlow, { 
   MiniMap, 
   Controls, 
@@ -32,6 +33,10 @@ const defaultInitialNodes = [
       label: 'NODE_01',
       habitName: '範例習慣',
       isDone: false,
+      notes: '',
+      optimizationRecord: '',
+      targetCount: 0,
+      completedDays: [],
       color: '#ff007f'
     }, 
     position: { x: 0, y: 200 } 
@@ -40,9 +45,10 @@ const defaultInitialNodes = [
 const defaultInitialEdges = [{ id: 'e0-1', source: '0', target: '1', animated: true }];
 
 export default function App() {
-
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [selectedNodeForEdit, setSelectedNodeForEdit] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // 更新節點顏色
   const onColorChange = useCallback(
@@ -77,9 +83,29 @@ export default function App() {
       setNodes((nds) =>
         nds.map((node) => {
           if (node.id === id) {
+            const today = new Date().toISOString().split('T')[0];
+            const completedDays = node.data?.completedDays || [];
+            let newCompletedDays;
+            
+            if (isDone) {
+              // 如果勾選，添加今天的日期（如果還沒有）
+              if (!completedDays.includes(today)) {
+                newCompletedDays = [...completedDays, today];
+              } else {
+                newCompletedDays = completedDays;
+              }
+            } else {
+              // 如果取消勾選，移除今天的日期
+              newCompletedDays = completedDays.filter(date => date !== today);
+            }
+            
             return {
               ...node,
-              data: { ...node.data, isDone },
+              data: { 
+                ...node.data, 
+                isDone,
+                completedDays: newCompletedDays,
+              },
             };
           }
           return node;
@@ -89,21 +115,55 @@ export default function App() {
     [setNodes]
   );
 
-  // 詳細按鈕點擊處理
+  // 詳細按鈕點擊處理（使用函數式更新避免依賴 nodes）
   const onDetail = useCallback(
     (id) => {
       setNodes((nds) => {
         const node = nds.find((n) => n.id === id);
         if (node) {
-          console.log('詳細信息:', node);
-          // 這裡可以打開詳細信息彈窗或執行其他操作
-          alert(`節點詳細信息:\n名稱: ${node.data.habitName || node.data.label}\n完成狀態: ${node.data.isDone ? '已完成' : '未完成'}`);
+          setSelectedNodeForEdit(node);
+          setIsModalOpen(true);
         }
-        return nds; // 不改變節點狀態，只是讀取
+        return nds; // 不改變節點狀態
       });
     },
     [setNodes]
   );
+
+  // 保存習慣詳情
+  const onSaveHabitDetail = useCallback(
+    (nodeId, formData) => {
+      setNodes((nds) =>
+        nds.map((node) => {
+          if (node.id === nodeId) {
+            return {
+              ...node,
+              data: {
+                ...node.data,
+                habitName: formData.habitName,
+                notes: formData.notes,
+                optimizationRecord: formData.optimizationRecord,
+                targetCount: formData.targetCount,
+                completedDays: formData.completedDays,
+                // 如果完成天數有變化，更新 isDone 狀態（如果今天已完成）
+                isDone: formData.completedDays.includes(
+                  new Date().toISOString().split('T')[0]
+                ),
+              },
+            };
+          }
+          return node;
+        })
+      );
+    },
+    [setNodes]
+  );
+
+  // 關閉 Modal
+  const handleCloseModal = useCallback(() => {
+    setIsModalOpen(false);
+    setSelectedNodeForEdit(null);
+  }, []);
 
   // 從 LocalStorage 嘗試讀取並初始化（只在組件掛載時運行一次）
   useEffect(() => {
@@ -144,13 +204,38 @@ export default function App() {
 
     setNodes(initialNodes);
     setEdges(initialEdges);
+    isInitializedRef.current = true;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 只在組件掛載時運行一次
 
   // 當回調函數改變時，更新所有節點的回調函數
+  // 使用 useRef 來追蹤是否已經初始化，避免無限循環
+  const isInitializedRef = React.useRef(false);
+  const prevCallbacksRef = React.useRef({});
+  
   useEffect(() => {
-    setNodes((nds) =>
-      nds.map((node) => {
+    // 檢查回調函數是否真的改變了
+    const callbacksChanged = 
+      prevCallbacksRef.current.onChange !== onColorChange ||
+      prevCallbacksRef.current.onDelete !== onDeleteNode ||
+      prevCallbacksRef.current.onToggleDone !== onToggleDone ||
+      prevCallbacksRef.current.onDetail !== onDetail;
+    
+    // 只在初始化完成後且回調函數改變時才更新
+    if (!isInitializedRef.current || !callbacksChanged) {
+      prevCallbacksRef.current = {
+        onChange: onColorChange,
+        onDelete: onDeleteNode,
+        onToggleDone: onToggleDone,
+        onDetail: onDetail,
+      };
+      return;
+    }
+    
+    setNodes((nds) => {
+      if (nds.length === 0) return nds;
+      
+      return nds.map((node) => {
         if (node.type === 'colorPicker') {
           return {
             ...node,
@@ -164,8 +249,15 @@ export default function App() {
           };
         }
         return node;
-      })
-    );
+      });
+    });
+    
+    prevCallbacksRef.current = {
+      onChange: onColorChange,
+      onDelete: onDeleteNode,
+      onToggleDone: onToggleDone,
+      onDetail: onDetail,
+    };
   }, [onColorChange, onDeleteNode, onToggleDone, onDetail, setNodes]);
 
   // 自動保存節點和邊到本地儲存（清理函數引用）
@@ -436,6 +528,14 @@ export default function App() {
           color="#1a1a1a"
         />
       </ReactFlow>
+
+      {/* 習慣詳情 Modal */}
+      <HabitDetailModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        node={selectedNodeForEdit}
+        onSave={onSaveHabitDetail}
+      />
     </div>
   );
 }
