@@ -2,6 +2,7 @@ import 'reactflow/dist/style.css';
 import React, { useCallback, useEffect, useState } from 'react';
 import ColorSelectorNode from './ColorSelectorNode';
 import HabitDetailModal from './HabitDetailModal';
+import SettingsModal from './SettingsModal';
 import CustomEdge from './CustomEdge';
 import ReactFlow, { 
   MiniMap, 
@@ -73,7 +74,7 @@ const defaultInitialNodes = [
     type: 'colorPicker',
     data: { 
       label: 'NODE_01',
-      habitName: '範例習慣',
+      habitName: 'Example Habit',
       isDone: false,
       notes: '',
       optimizationRecord: '',
@@ -98,6 +99,7 @@ export default function App() {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [selectedNodeForEdit, setSelectedNodeForEdit] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
 
   // 獲取今天的日期字符串 (YYYY-MM-DD)
   const getTodayDateString = useCallback(() => {
@@ -839,6 +841,8 @@ export default function App() {
         }));
 
         alert('導入成功！');
+        // 導入成功後關閉設定 modal
+        setIsSettingsModalOpen(false);
       } catch (error) {
         console.error('Failed to import:', error);
         alert('導入失敗！請檢查 JSON 文件格式是否正確。');
@@ -852,6 +856,41 @@ export default function App() {
     reader.readAsText(file);
     event.target.value = ''; // 重置文件輸入，允許重新選擇同一文件
   }, [onColorChange, onDeleteNode, onToggleDone, onDetail, onColorSwitch, setNodes, setEdges]);
+
+  // 清除網站資料函數
+  const handleClearSiteData = useCallback(() => {
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(LAST_OPEN_DATE_KEY);
+      // 重置為默認節點和邊
+      setNodes(defaultInitialNodes.map((node) => {
+        if (node.type === 'colorPicker') {
+          return {
+            ...node,
+            data: {
+              ...node.data,
+              onChange: onColorChange,
+              onDelete: onDeleteNode,
+              onToggleDone: onToggleDone,
+              onDetail: onDetail,
+              onColorSwitch: onColorSwitch,
+            },
+          };
+        }
+        return node;
+      }));
+      setEdges(defaultInitialEdges);
+      alert('網站資料已清除！');
+    } catch (error) {
+      console.error('Failed to clear site data:', error);
+      alert('清除失敗！');
+    }
+  }, [onColorChange, onDeleteNode, onToggleDone, onDetail, onColorSwitch, setNodes, setEdges]);
+
+  // 關閉設定 Modal
+  const handleCloseSettingsModal = useCallback(() => {
+    setIsSettingsModalOpen(false);
+  }, []);
 
   return (
     <div style={{ 
@@ -938,7 +977,7 @@ export default function App() {
                 e.target.style.transform = 'scale(1)';
               }}
             >
-              + ADD NODE
+              ADD NODE
             </button>
             <button
               onClick={handleManualSave}
@@ -968,77 +1007,38 @@ export default function App() {
                 e.target.style.transform = 'scale(1)';
               }}
             >
-              💾 SAVE
+              SAVE
             </button>
             <button
-              onClick={handleExportJSON}
+              onClick={() => setIsSettingsModalOpen(true)}
               className="cyberpunk-button"
               style={{
                 padding: '12px 24px',
                 borderRadius: '0',
                 background: 'rgba(10, 10, 10, 0.8)',
-                color: '#bc13fe',
-                border: '1px solid #bc13fe',
+                color: '#00f3ff',
+                border: '1px solid #00f3ff',
                 cursor: 'pointer',
                 fontWeight: '600',
                 fontSize: '14px',
                 fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
-                boxShadow: '0 0 10px rgba(188, 19, 254, 0.5), inset 0 0 10px rgba(188, 19, 254, 0.1)',
+                boxShadow: '0 0 10px rgba(0, 243, 255, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.1)',
                 transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                 letterSpacing: '1px',
                 textTransform: 'uppercase',
                 backdropFilter: 'blur(10px)',
               }}
               onMouseEnter={(e) => {
-                e.target.style.boxShadow = '0 0 20px rgba(188, 19, 254, 0.8), inset 0 0 20px rgba(188, 19, 254, 0.2)';
+                e.target.style.boxShadow = '0 0 20px rgba(0, 243, 255, 0.8), inset 0 0 20px rgba(0, 243, 255, 0.2)';
                 e.target.style.transform = 'scale(1.05)';
               }}
               onMouseLeave={(e) => {
-                e.target.style.boxShadow = '0 0 10px rgba(188, 19, 254, 0.5), inset 0 0 10px rgba(188, 19, 254, 0.1)';
+                e.target.style.boxShadow = '0 0 10px rgba(0, 243, 255, 0.5), inset 0 0 10px rgba(0, 243, 255, 0.1)';
                 e.target.style.transform = 'scale(1)';
               }}
             >
-              📤 EXPORT JSON
+              SETTINGS
             </button>
-            <label
-              className="cyberpunk-button"
-              style={{
-                padding: '12px 24px',
-                borderRadius: '0',
-                background: 'rgba(10, 10, 10, 0.8)',
-                color: '#ff007f',
-                border: '1px solid #ff007f',
-                cursor: 'pointer',
-                fontWeight: '600',
-                fontSize: '14px',
-                fontFamily: "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
-                boxShadow: '0 0 10px rgba(255, 0, 127, 0.5), inset 0 0 10px rgba(255, 0, 127, 0.1)',
-                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                letterSpacing: '1px',
-                textTransform: 'uppercase',
-                backdropFilter: 'blur(10px)',
-                display: 'block',
-                textAlign: 'center',
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.boxShadow = '0 0 20px rgba(255, 0, 127, 0.8), inset 0 0 20px rgba(255, 0, 127, 0.2)';
-                e.target.style.transform = 'scale(1.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.boxShadow = '0 0 10px rgba(255, 0, 127, 0.5), inset 0 0 10px rgba(255, 0, 127, 0.1)';
-                e.target.style.transform = 'scale(1)';
-              }}
-            >
-              📥 IMPORT JSON
-              <input
-                type="file"
-                accept=".json"
-                onChange={handleImportJSON}
-                style={{
-                  display: 'none',
-                }}
-              />
-            </label>
           </div>
         </Panel>
         <Controls 
@@ -1079,6 +1079,15 @@ export default function App() {
         onClose={handleCloseModal}
         node={selectedNodeForEdit}
         onSave={onSaveHabitDetail}
+      />
+
+      {/* 設定 Modal */}
+      <SettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={handleCloseSettingsModal}
+        onExportJSON={handleExportJSON}
+        onImportJSON={handleImportJSON}
+        onClearSiteData={handleClearSiteData}
       />
     </div>
   );
