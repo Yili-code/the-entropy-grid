@@ -123,7 +123,7 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
             textShadow: `0 0 10px ${glowColor}`,
             textTransform: 'uppercase',
           }}>
-            習慣詳情
+            Habit Details
           </h2>
           <button
             onClick={onClose}
@@ -204,7 +204,7 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
               letterSpacing: '1px',
               textTransform: 'uppercase',
             }}>
-              目標次數
+              Target Count
             </label>
             <input
               type="number"
@@ -244,7 +244,7 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
               background: 'rgba(10, 10, 10, 0.6)',
               border: `1px solid ${glowColor}40`,
             }}>
-              <div style={{ color: '#888', fontSize: '11px', marginBottom: '4px' }}>總完成天數</div>
+              <div style={{ color: '#888', fontSize: '11px', marginBottom: '4px' }}>Total Completed Days</div>
               <div style={{ color: glowColor, fontSize: '20px', fontWeight: '600' }}>
                 {totalCompletedDays}
               </div>
@@ -254,7 +254,7 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
               background: 'rgba(10, 10, 10, 0.6)',
               border: `1px solid ${glowColor}40`,
             }}>
-              <div style={{ color: '#888', fontSize: '11px', marginBottom: '4px' }}>本月完成</div>
+              <div style={{ color: '#888', fontSize: '11px', marginBottom: '4px' }}>This Month Completed</div>
               <div style={{ color: glowColor, fontSize: '20px', fontWeight: '600' }}>
                 {thisMonthCompleted}
               </div>
@@ -271,7 +271,7 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
               letterSpacing: '1px',
               textTransform: 'uppercase',
             }}>
-              本月完成情況
+              This Month Completion
             </label>
             <div style={{
               display: 'grid',
@@ -318,7 +318,7 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
                       e.target.style.background = 'rgba(255, 255, 255, 0.1)';
                     }
                   }}
-                  title={isFuture ? '無法勾選未來日期' : ''}
+                  title={isFuture ? 'Cannot select future dates' : ''}
                 >
                   {day}
                 </div>
@@ -336,12 +336,12 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
               letterSpacing: '1px',
               textTransform: 'uppercase',
             }}>
-              自我優化紀錄
+              Self-Improvement Record
             </label>
             <textarea
               value={formData.optimizationRecord}
               onChange={(e) => handleInputChange('optimizationRecord', e.target.value)}
-              placeholder="記錄為什麼失敗、如何改進..."
+              placeholder="Record why you failed and how to improve..."
               rows="4"
               style={{
                 width: '100%',
@@ -376,12 +376,12 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
               letterSpacing: '1px',
               textTransform: 'uppercase',
             }}>
-              備註
+              Notes
             </label>
             <textarea
               value={formData.notes}
               onChange={(e) => handleInputChange('notes', e.target.value)}
-              placeholder="其他備註..."
+              placeholder="Other notes..."
               rows="3"
               style={{
                 width: '100%',
@@ -437,7 +437,7 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
               e.target.style.boxShadow = 'none';
             }}
           >
-            取消
+            Cancel
           </button>
           <button
             onClick={handleSave}
@@ -464,7 +464,7 @@ const HabitDetailModal = ({ isOpen, onClose, node, onSave }) => {
               e.target.style.transform = 'scale(1)';
             }}
           >
-            儲存
+            Save
           </button>
         </div>
       </div>

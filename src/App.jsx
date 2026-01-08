@@ -599,7 +599,7 @@ export default function App() {
         type: 'colorPicker',
         data: {
           label: `NODE_${nds.length + 1}`,
-          habitName: `習慣 ${nds.length + 1}`,
+          habitName: `Habit ${nds.length + 1}`,
           isDone: false,
           notes: '',
           optimizationRecord: '',
@@ -690,7 +690,7 @@ export default function App() {
       }
     } catch (error) {
       console.error('Failed to save:', error);
-      alert('存檔失敗！');
+      alert('Save failed!');
     }
   }, [nodes, edges]);
 
@@ -751,7 +751,7 @@ export default function App() {
       URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Failed to export:', error);
-      alert('匯出失敗！');
+      alert('Export failed!');
     }
   }, [nodes, edges]);
 
@@ -766,12 +766,12 @@ export default function App() {
         const importedData = JSON.parse(e.target.result);
         
         if (!importedData.nodes || !Array.isArray(importedData.nodes)) {
-          alert('無效的 JSON 文件格式！');
+          alert('Invalid JSON file format!');
           return;
         }
 
         // 確認導入
-        if (!window.confirm('導入數據將覆蓋現有數據，確定要繼續嗎？')) {
+        if (!window.confirm('Importing data will overwrite existing data. Are you sure you want to continue?')) {
           event.target.value = ''; // 重置文件輸入
           return;
         }
@@ -840,17 +840,17 @@ export default function App() {
           edges: importedEdges 
         }));
 
-        alert('導入成功！');
+        alert('Import successful!');
         // 導入成功後關閉設定 modal
         setIsSettingsModalOpen(false);
       } catch (error) {
         console.error('Failed to import:', error);
-        alert('導入失敗！請檢查 JSON 文件格式是否正確。');
+        alert('Import failed! Please check if the JSON file format is correct.');
       }
     };
 
     reader.onerror = () => {
-      alert('讀取文件失敗！');
+      alert('Failed to read file!');
     };
 
     reader.readAsText(file);
@@ -880,10 +880,10 @@ export default function App() {
         return node;
       }));
       setEdges(defaultInitialEdges);
-      alert('網站資料已清除！');
+      alert('Site data cleared!');
     } catch (error) {
       console.error('Failed to clear site data:', error);
-      alert('清除失敗！');
+      alert('Clear failed!');
     }
   }, [onColorChange, onDeleteNode, onToggleDone, onDetail, onColorSwitch, setNodes, setEdges]);
 

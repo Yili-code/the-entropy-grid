@@ -12,7 +12,7 @@ const SettingsModal = ({ isOpen, onClose, onExportJSON, onImportJSON, onClearSit
   };
 
   const handleClearData = () => {
-    if (window.confirm('確定要清除所有網站資料嗎？此操作無法復原！')) {
+    if (window.confirm('Are you sure you want to clear all site data? This action cannot be undone!')) {
       onClearSiteData();
       onClose();
     }

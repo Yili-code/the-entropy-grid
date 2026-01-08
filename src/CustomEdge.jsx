@@ -86,7 +86,7 @@ const CustomEdge = ({
                 e.target.style.transform = 'scale(1)';
                 e.target.style.boxShadow = '0 0 10px rgba(255, 0, 127, 0.5)';
               }}
-              title="刪除連接"
+              title="Delete Connection"
             >
               ×
             </button>
