@@ -41,24 +41,29 @@ const COLOR_SYSTEM = [
 
 // 計算已解鎖的顏色列表（基於完成天數）
 const getUnlockedColors = (completedDaysCount) => {
-  const unlockedColors = [];
-  for (let i = 0; i < COLOR_SYSTEM.length; i++) {
-    const milestone = Math.pow(2, i);
-    if (completedDaysCount >= milestone) {
-      unlockedColors.push(COLOR_SYSTEM[i]);
-    }
-  }
+  // 使用 filter 找出所有已達到的里程碑對應的顏色
+  // 里程碑：2^0=1, 2^1=2, 2^2=4, 2^3=8, ...
+  const unlocked = COLOR_SYSTEM.filter((_, index) => {
+    const milestone = 1 << index; // 位運算 2^i，比 Math.pow 更快
+    return completedDaysCount >= milestone;
+  });
   // 如果沒有任何解鎖的顏色，至少返回深灰色
-  if (unlockedColors.length === 0) {
-    unlockedColors.push(COLOR_SYSTEM[0]);
-  }
-  return unlockedColors;
+  return unlocked.length > 0 ? unlocked : [COLOR_SYSTEM[0]];
 };
 
 // 根據完成天數獲取應該使用的顏色（自動選擇最新解鎖的顏色）
 const getColorForMilestone = (completedDaysCount) => {
-  const unlockedColors = getUnlockedColors(completedDaysCount);
-  return unlockedColors[unlockedColors.length - 1]; // 返回最新解鎖的顏色
+  if (completedDaysCount <= 0) {
+    return COLOR_SYSTEM[0]; // 默認返回深灰色
+  }
+  // 計算最高解鎖索引：找到最大的 i 使得 2^i <= completedDaysCount
+  // 使用 Math.floor(Math.log2(completedDaysCount)) + 1 來處理邊界
+  // 因為我們需要找到最後一個已解鎖的顏色
+  const maxUnlockedIndex = Math.min(
+    Math.floor(Math.log2(completedDaysCount)) + 1,
+    COLOR_SYSTEM.length - 1
+  );
+  return COLOR_SYSTEM[Math.max(0, maxUnlockedIndex)];
 };
 
 // 定義默認初始節點和邊
