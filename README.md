@@ -1,16 +1,166 @@
-# React + Vite
+# The Entropy Grid [In Progress]
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一個視覺化的習慣追蹤工具，使用 React Flow 將習慣以節點圖的形式呈現，幫助你追蹤和管理日常習慣之間的關聯。
 
-Currently, two official plugins are available:
+## 專案概述
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+The Entropy Grid 是一個創新的習慣追蹤應用程式，與傳統的待辦清單不同，它將習慣視覺化為可連接的節點，讓你能夠：
 
-## React Compiler
+- **視覺化習慣關係**：透過節點之間的連接線，了解習慣之間的關聯性
+- **自動每日重置**：系統會自動在每天重置完成狀態，無需手動操作
+- **里程碑系統**：根據完成天數解鎖不同顏色，激勵持續追蹤
+- **詳細記錄**：為每個習慣記錄詳細資訊、優化建議和完成統計
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 主要功能
 
-## Expanding the ESLint configuration
+### 🎯 習慣管理
+- 創建、編輯和刪除習慣節點
+- 每日完成狀態追蹤
+- 習慣詳情記錄（名稱、備註、優化記錄、目標次數）
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+### 🎨 視覺化系統
+- 使用 React Flow 實現可拖拽的節點圖
+- 節點之間可建立連接關係
+- Cyberpunk 風格的霓虹發光效果
+- 自訂顏色系統，根據完成天數解鎖新顏色
+
+### 📊 統計功能
+- 總完成天數統計
+- 本月完成天數統計
+- 30 天完成日曆視圖
+- 禁止勾選未來日期
+
+### 💾 數據管理
+- 自動保存到 LocalStorage
+- 手動保存功能
+- JSON 格式匯出/匯入
+- 清除網站資料功能
+
+### 🔄 自動化功能
+- 每日自動重置完成狀態
+- 應用啟動時檢查日期變化
+- 運行時每分鐘檢查是否跨過午夜
+
+## 技術棧
+
+- **前端框架**：React 19.2.0
+- **圖表庫**：React Flow 11.11.4
+- **構建工具**：Vite 7.2.5 (rolldown-vite)
+- **數據存儲**：LocalStorage
+- **後端服務**：Firebase (配置中，尚未完全整合)
+- **樣式**：內聯 CSS + Cyberpunk 風格
+
+## 安裝與運行
+
+### 前置需求
+- Node.js 18+ 
+- npm 或 yarn
+
+### 安裝依賴
+```bash
+npm install
+```
+
+### 開發模式
+```bash
+npm run dev
+```
+
+### 構建生產版本
+```bash
+npm run build
+```
+
+### 預覽生產版本
+```bash
+npm run preview
+```
+
+## 使用說明
+
+### 基本操作
+
+1. **添加節點**：點擊右上角 "ADD NODE" 按鈕創建新習慣
+2. **連接節點**：拖拽節點邊緣的連接點到另一個節點，建立關聯
+3. **完成習慣**：點擊節點中的 checkbox 標記今日完成
+4. **查看詳情**：點擊節點底部的三條橫線查看和編輯習慣詳情
+5. **刪除節點**：點擊節點右上角的 × 按鈕
+6. **刪除連接**：將滑鼠懸停在連接線上，點擊出現的 × 按鈕
+
+### 顏色系統
+
+習慣節點會根據完成天數自動解鎖新顏色：
+
+- **0 天**：深灰色 (#1a1a1a)
+- **1 天**：霓虹粉 (#ff007f)
+- **2 天**：霓虹青 (#00f3ff)
+- **4 天**：金色 (#ffd700)
+- **8 天**：霓虹綠 (#00ff00)
+- **16 天**：橙紅色 (#ff4500)
+- **32 天**：深粉紅 (#ff1493)
+- **64 天**：深青色 (#00ced1)
+- **128 天**：中紫色 (#9370db)
+- **256 天**：洋紅色 (#ff00ff)
+
+達到新的里程碑（2^n 天）時，節點會自動切換到最新解鎖的顏色。你也可以在已解鎖的顏色中手動切換。
+
+### 數據管理
+
+- **自動保存**：所有變更會自動保存到瀏覽器的 LocalStorage
+- **手動保存**：點擊 "SAVE" 按鈕手動觸發保存
+- **匯出數據**：在設定中點擊 "Export Data" 將數據匯出為 JSON 檔案
+- **匯入數據**：在設定中點擊 "Import Data" 從 JSON 檔案匯入數據
+- **清除數據**：在設定中點擊 "Clear Data" 清除所有本地數據
+
+## 專案結構
+
+```
+the-entropy-grid/
+├── src/
+│   ├── App.jsx              # 主應用組件
+│   ├── main.jsx             # 應用入口
+│   ├── ColorSelectorNode.jsx # 習慣節點組件
+│   ├── HabitDetailModal.jsx  # 習慣詳情彈窗
+│   ├── SettingsModal.jsx    # 設定彈窗
+│   ├── CustomEdge.jsx        # 自訂連接線組件
+│   ├── firebase.js          # Firebase 配置
+│   ├── App.css              # 應用樣式
+│   └── index.css            # 全局樣式
+├── public/                  # 靜態資源
+├── package.json             # 專案配置
+├── vite.config.js           # Vite 配置
+├── firebase.json            # Firebase 配置
+└── README.md                # 專案說明文件
+```
+
+## 開發說明
+
+### 技術決策
+
+- **React Flow**：選擇 React Flow 而非 D3.js，因為它提供了內建的拖拽、連接等功能，與 React 整合良好，開發效率更高
+- **LocalStorage**：目前使用 LocalStorage 存儲數據，適合數據量不大的場景。未來可考慮升級到 IndexedDB 或 Firebase
+- **日期檢查**：使用定時器每分鐘檢查一次日期變化，確保不會漏掉跨天重置
+- **函數序列化**：React 函數無法直接序列化，因此在保存時會移除函數引用，讀取時重新綁定
+
+### 已知限制
+
+- 數據僅存儲在本地瀏覽器，無法跨設備同步
+- LocalStorage 有容量限制（通常約 5-10MB）
+- 目前尚未完全整合 Firebase 功能
+
+### 未來計劃
+
+- [ ] 整合 Firebase 實現多設備同步
+- [ ] 添加用戶認證功能
+- [ ] 實現數據雲端備份
+- [ ] 優化性能，減少不必要的重新渲染
+- [ ] 添加更多統計圖表和視覺化功能
+- [ ] 支援習慣提醒功能
+
+## 授權
+
+本專案為個人專案，僅供學習和個人使用。
+
+## 貢獻
+
+歡迎提出問題和建議，但目前不接受外部貢獻。
